@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class NetworkGraph {
+
     private HashMap<Integer, ArrayList<Integer>> adjList;
 
     public int size() {
@@ -65,4 +66,5 @@ public class NetworkGraph {
 
         return g;
     }
+
 }
