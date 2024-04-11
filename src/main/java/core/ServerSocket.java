@@ -88,7 +88,7 @@ public class ServerSocket {
 
         try {
             server.join();
-            server.awaitRPC();
+            // server.awaitRPC();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

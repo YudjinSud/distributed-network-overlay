@@ -22,7 +22,7 @@ public class OverlayGraph {
         this.nodeList = new ArrayList<Integer>();
     }
 
-    public void buildGraph(){
+    public void buildGraph() {
         int numNodes = nodeList.size();
 
         for (int i = 0; i < numNodes; i++) {
@@ -30,43 +30,48 @@ public class OverlayGraph {
             int nextNodeIndex = (i + 1) % numNodes; // Get the index of the next node, wrapping around to 0 if we reach the end
             int nextNode = nodeList.get(nextNodeIndex);
 
-            // get connections for currentNode if not create a new ArrayList
-            //ArrayList<Integer> connections = adjList.getOrDefault(currentNode, new ArrayList<>());
-            //
+            int prevNodeIndex = (i - 1 + numNodes) % numNodes;
+            int prevNode = nodeList.get(prevNodeIndex);
+
             ArrayList<Integer> connections = new ArrayList<>();
+            if (nextNode != prevNode) {
+                connections.add(prevNode);
+            }
             connections.add(currentNode);
             connections.add(nextNode);
             adjList.put(currentNode, connections);
         }
-
     }
 
-    public void printNodeList(){
-        for (Integer node : nodeList){
+    public void printNodeList() {
+        for (Integer node : nodeList) {
             System.out.println(node);
         }
         System.out.println();
     }
+
     public void addNode(int nodeNb) {
         if (!nodeList.contains(nodeNb)) {
             nodeList.add(nodeNb);
-            if (nodeList.size() > 1 ){
+            if (nodeList.size() > 1) {
                 this.buildGraph();
             }
         }
     }
+
     public HashMap<Integer, ArrayList<Integer>> getAdjList() {
         return adjList;
     }
+
     public List<Integer> getAdjNodes(int node) {
         return adjList.get(node);
     }
 
     public void printGraph() {
-        for(int node = 1; node <= adjList.size(); node++) {
+        for (int node = 1; node <= adjList.size(); node++) {
             List<Integer> adjNodes = this.getAdjNodes(node);
             System.out.print("Node " + node + " is connected to: ");
-            for(int adjNode : adjNodes) {
+            for (int adjNode : adjNodes) {
                 System.out.print(adjNode + " ");
             }
             System.out.println();
