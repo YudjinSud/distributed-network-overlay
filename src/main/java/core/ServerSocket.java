@@ -4,7 +4,7 @@ import com.rabbitmq.client.*;
 
 public class ServerSocket {
     static OverlayGraph overlay;
-
+    private static ServerSocket server;
     private final static String QUEUE_NAME = "join";
 
     private static Connection establishConnection() throws Exception {
@@ -14,7 +14,7 @@ public class ServerSocket {
         factory.setPort(5672);
         factory.setUsername("sgbdexna");
         factory.setVirtualHost("sgbdexna");
-        factory.setPassword("6JG_KIUYfXlkjSFU1lvov_G1ePwxZ9x0");
+        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
         return factory.newConnection();
     }
 
@@ -32,63 +32,46 @@ public class ServerSocket {
 
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-            String message = new String(delivery.getBody(), "UTF-8");
-            int messageInt = Integer.parseInt(message);
-            System.out.println("Joining node: " + messageInt);
-            overlay.addNode(messageInt);
+            String receivedMessage = new String(delivery.getBody(), "UTF-8");
+            String[] receivedArray = receivedMessage.split(",");
+            String nodeString = receivedArray[0];
+            int nodeInt = Integer.parseInt(nodeString);
+            System.out.println("Joining node: " + nodeInt);
+            overlay.addNode(nodeInt);
             //overlay.printNodeList();
             overlay.printGraph();
+            System.out.println("Propagating node");
+            try {
+                Thread.sleep(1000);
+                server.fanout(receivedMessage);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         };
         channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
         });
 
-        // TODO: Will each node have its own assigned queue for communication / RPC?
     }
 
-    public void awaitRPC() throws Exception {
+    public void fanout(String message) throws Exception{
 
-        String RPC_QUEUE_NAME = "rpc_queue";
+        final String EXCHANGE_NAME = "nodesConnections";
 
-        Connection connection = establishConnection();
-        Channel channel = connection.createChannel();
-        channel.queueDeclare(RPC_QUEUE_NAME, false, false, false, null);
-        channel.queuePurge(RPC_QUEUE_NAME);
-
-        channel.basicQos(1); // number of server process
-
-        System.out.println(" [x] Awaiting RPC requests");
-
-        DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-            AMQP.BasicProperties replyProps = new AMQP.BasicProperties
-                    .Builder()
-                    .correlationId(delivery.getProperties().getCorrelationId())
-                    .build();
-
-            String response = "Example of computed answer";
-            try {
-                String message = new String(delivery.getBody(), "UTF-8");
-                System.out.println("Receive following route request:" + message);
-            } catch (RuntimeException e) {
-                System.out.println(" [.] " + e);
-            } finally {
-                channel.basicPublish("", delivery.getProperties().getReplyTo(), replyProps, response.getBytes("UTF-8"));
-                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-            }
-        };
-
-        channel.basicConsume(RPC_QUEUE_NAME, false, deliverCallback, (consumerTag -> {
-        }));
+        try (Connection connection = establishConnection();
+             Channel channel = connection.createChannel()) {
+            channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+            channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes("UTF-8"));
+            System.out.println(" [x] Message propagated '" + message + "'");
+        }
     }
 
 
     public static void main(String main[]) {
 
-        ServerSocket server = new ServerSocket();
+        server = new ServerSocket();
         overlay = new OverlayGraph();
-
         try {
             server.join();
-            // server.awaitRPC();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
