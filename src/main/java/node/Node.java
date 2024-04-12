@@ -7,21 +7,34 @@ import com.rabbitmq.client.*;
 
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 // TODO: Classes to be exported as a Docker image in the future. This represents a node
 public class Node {
 
     private int nodeId;
     private static Node node;
+    private static ArrayList<NetworkNode> networkObjects;
+    public static HashMap<Integer, ArrayList<Integer>> connections;
+
     public Node(String[] args) {
         if (args.length > 0) {
             this.nodeId = Integer.parseInt(args[0]);
         } else {
-            // If no argument is provided, set the nodeId to a default value
             this.nodeId = 0;
         }
+
+        connections = new HashMap<Integer, ArrayList<Integer>>();
+        connections.put(nodeId, new ArrayList<>());
+        for (int i = 1; i < args.length; i++) {
+            connections.get(nodeId).add(Integer.parseInt(args[i]));
+        }
+
     }
-    public int getNodeId(){
+
+    public int getNodeId() {
         return nodeId;
     }
 
@@ -56,7 +69,40 @@ public class Node {
             System.out.println(" [.] " + e);
         }
     }
-    public void listen() throws Exception{
+
+    public void handleMessage(String message) {
+        boolean nodeExists = false;
+
+        System.out.println("handleMessage(): " + message);
+        String[] receivedArray = message.split(",");
+        String nodeString = receivedArray[0];
+        int nodeInt = Integer.parseInt(nodeString);
+
+
+        for (NetworkNode obj : networkObjects) {
+            if (obj.getNodeId() == nodeInt) {
+                // If the node exists, set nodeExists to true and break the loop
+                nodeExists = true;
+                node.log(obj.toString());
+                break;
+            }
+        }
+
+        if (!nodeExists) {
+            HashMap<Integer, ArrayList<Integer>> connectionsNeighbour = new HashMap<Integer, ArrayList<Integer>>();
+            connectionsNeighbour.put(nodeInt, new ArrayList<>());
+            for (int i = 1; i < receivedArray.length; i++) {
+                connectionsNeighbour.get(nodeInt).add(Integer.parseInt(receivedArray[i]));
+            }
+            NetworkNode newNode = new NetworkNode(nodeInt, connectionsNeighbour);
+            networkObjects.add(newNode);
+            System.out.println("handleMessage(): Got new routing from node" + newNode.toString());
+        }
+
+
+    }
+
+    public void listen() throws Exception {
 
         final String EXCHANGE_NAME = "nodesConnections";
 
@@ -71,19 +117,45 @@ public class Node {
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String message = new String(delivery.getBody(), "UTF-8");
             node.log("[x] Received '" + message + "'");
+            node.handleMessage(message);
         };
-        channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+        channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {
+        });
+
+
+//        for (int i = 0; i < networkObjects.size() - 1; i++) {
+//            HashMap<Integer, Integer> currentHopDistance = networkObjects.get(i).getHopDistance();
+//            for (Map.Entry<Integer, Integer> entry : currentHopDistance.entrySet()) {
+//                int key = entry.getKey();
+//                int value = entry.getValue();
+//
+//                for (int j = i + 1; j < networkObjects.size(); j++) {
+//                    HashMap<Integer, Integer> otherHopDistance = networkObjects.get(j).getHopDistance();
+//                    for (Map.Entry<Integer, Integer> entry2 : otherHopDistance.entrySet()) {
+//                        int otherKey = entry2.getKey();
+//                        int otherValue = entry2.getValue();
+//
+//                        if (key == otherKey && value == otherValue) {
+//                            System.out.println("Matching hopDistance found:");
+//                            System.out.println("Node " + i + " hopDistance: " + currentHopDistance);
+//                            System.out.println("Node " + j + " hopDistance: " + otherHopDistance);
+//                            // Do something here
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
     }
+
 
     public static void main(String[] args) throws Exception {
 
         node = new Node(args);
+        networkObjects = new ArrayList<NetworkNode>();
+        NetworkNode nodeNetwork = new NetworkNode(node.getNodeId(), connections);
+        networkObjects.add(nodeNetwork);
 
-//        System.out.println("Number of arguments: " + args.length);
-//        for (int i = 0; i < args.length; i++) {
-//            System.out.println("Argument " + i + ": " + args[i]);
-//        }
 
         try {
             node.log("Born of node number " + node.getNodeId());
