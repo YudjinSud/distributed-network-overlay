@@ -69,7 +69,7 @@ public class Node {
     }
 
     public void log(String string) {
-        String stringToPrint = "nodeId: " + this.getNodeId() + ": " + string;
+        String stringToPrint = "nodeId: " + node.getNodeId() + ": " + string;
         System.out.println(stringToPrint);
     }
 
@@ -78,9 +78,9 @@ public class Node {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("rat.rmq2.cloudamqp.com");
         factory.setPort(5672);
-        factory.setUsername("wqnhzlhb");
-        factory.setVirtualHost("wqnhzlhb");
-        factory.setPassword("o9EdvwoKVGxNTfIEjVSqF9UUKPSrD8EJ");
+        factory.setUsername("sgbdexna");
+        factory.setVirtualHost("sgbdexna");
+        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
         return factory.newConnection();
     }
 
@@ -133,7 +133,6 @@ public class Node {
             }
         }
 
-        // To debug
         if (neigbour) {
             for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
                 boolean potencialConnection = false;
@@ -147,34 +146,29 @@ public class Node {
                         System.out.println("Founded potencial connetion" + receivedNodeNeigbour);
                         potencialConnection = true;
                     }
-                }
-                if (potencialConnection) {
-                    System.out.println("Gonna add this" + receivedNodeNeigbour + "to my node " + node.getNodeId());
+                    if (potencialConnection) {
+                        System.out.println("Gonna add this" + receivedNodeNeigbour + "to my node " + node.getNodeId());
+                        ArrayList<Integer> routes = new ArrayList<>();
+                        routes.add(receivedNodeNeigbour.get(0)); // destination
+                        routes.add(receivedNodeNeigbour.get(1) + 1); // distance
+                        routes.add(receivedNode.getNodeId()); // where to go to reach destination
+                        System.out.println("New routes" + routes + "added to" + node.getNodeId());
+                        this.routing.add(routes);
+                        System.out.println(this.routing);
+
+                    }
                 }
             }
+
+
+            //check for the connections
+            if (me == false && neigbour == true) {
+                System.out.println("Checking for new routing ");
+
+            }
+
+
         }
-
-
-        //check for the connections
-        if (me == false && neigbour == true) {
-            System.out.println("Checking for new routing ");
-
-        }
-
-
-//
-//        if (!nodeExists) {
-//            HashMap<Integer, ArrayList<Integer>> connectionsNeighbour = new HashMap<Integer, ArrayList<Integer>>();
-//            connectionsNeighbour.put(nodeInt, new ArrayList<>());
-//            for (int i = 1; i < receivedArray.length; i++) {
-//                connectionsNeighbour.get(nodeInt).add(Integer.parseInt(receivedArray[i]));
-//            }
-//            NetworkNode newNode = new NetworkNode(nodeInt, connectionsNeighbour);
-//            networkObjects.add(newNode);
-//            System.out.println("handleMessage(): Got new routing from node" + newNode.toString());
-//        }
-
-
     }
 
     public void listen() throws Exception {
@@ -192,43 +186,18 @@ public class Node {
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String message = new String(delivery.getBody(), "UTF-8");
             node.log("[x] Received '" + message + "'");
-            this.handleMessage(message);
+            node.handleMessage(message);
         };
         channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {
         });
-
-
-//        for (int i = 0; i < networkObjects.size() - 1; i++) {
-//            HashMap<Integer, Integer> currentHopDistance = networkObjects.get(i).getHopDistance();
-//            for (Map.Entry<Integer, Integer> entry : currentHopDistance.entrySet()) {
-//                int key = entry.getKey();
-//                int value = entry.getValue();
-//
-//                for (int j = i + 1; j < networkObjects.size(); j++) {
-//                    HashMap<Integer, Integer> otherHopDistance = networkObjects.get(j).getHopDistance();
-//                    for (Map.Entry<Integer, Integer> entry2 : otherHopDistance.entrySet()) {
-//                        int otherKey = entry2.getKey();
-//                        int otherValue = entry2.getValue();
-//
-//                        if (key == otherKey && value == otherValue) {
-//                            System.out.println("Matching hopDistance found:");
-//                            System.out.println("Node " + i + " hopDistance: " + currentHopDistance);
-//                            System.out.println("Node " + j + " hopDistance: " + otherHopDistance);
-//                            // Do something here
-//                        }
-//                    }
-//                }
-//            }
-//        }
 
     }
 
 
     public static void main(String[] args) throws Exception {
 
-        Node node = new Node(args);
+        node = new Node(args);
         networkObjects = new ArrayList<Node>();
-        // NetworkNode nodeNetwork = new NetworkNode(node.getNodeId(), node.connections);
         networkObjects.add(node);
         Gson gson = new Gson();
         String json = gson.toJson(node);
@@ -264,7 +233,6 @@ public class Node {
         return nodeId == other.nodeId && Objects.equals(connections, other.connections) && Objects.equals(routing, other.routing);
     }
 
-    // hashCode method should be overridden along with equals method
     @Override
     public int hashCode() {
         return Objects.hash(nodeId, connections, routing);
