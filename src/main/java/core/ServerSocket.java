@@ -1,12 +1,14 @@
 package core;
 
+import com.google.gson.GsonBuilder;
 import com.rabbitmq.client.*;
 import node.Node;
 import com.google.gson.Gson;
+import node.NodeDeserializer;
 
 
 public class ServerSocket {
-    private OverlayGraph overlay;
+    public OverlayGraph overlay = new OverlayGraph();
     private static ServerSocket server;
     private final static String QUEUE_NAME = "join";
 
@@ -25,8 +27,6 @@ public class ServerSocket {
     public void join() throws Exception {
         String QUEUE_NAME = "join";
 
-        OverlayGraph overlay = new OverlayGraph();
-
         Connection connection = establishConnection();
         Channel channel = connection.createChannel();
 
@@ -36,7 +36,15 @@ public class ServerSocket {
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String receivedMessage = new String(delivery.getBody(), "UTF-8");
-            Gson gson = new Gson();
+
+            System.out.println(receivedMessage);
+
+            GsonBuilder builder = new GsonBuilder();
+            builder.registerTypeAdapter(Node.class, new NodeDeserializer());
+            Gson gson = builder.create();
+
+            builder.registerTypeAdapter(Node.class, new NodeDeserializer());
+
             Node receivedNode = gson.fromJson(receivedMessage, Node.class);
 
             int nodeInt = receivedNode.getNodeId();

@@ -12,12 +12,36 @@ import java.util.*;
 
 // TODO: Classes to be exported as a Docker image in the future. This represents a node
 public class Node {
-
-    private int nodeId;
     private static Node node;
     private static ArrayList<Node> networkObjects;
+
+    private int nodeId;
     public HashMap<Integer, ArrayList<Integer>> connections;
     private ArrayList<ArrayList<Integer>> routing;
+
+    public int getNodeId() {
+        return nodeId;
+    }
+
+    public void setNodeId(int nodeId) {
+        this.nodeId = nodeId;
+    }
+
+    public HashMap<Integer, ArrayList<Integer>> getConnections() {
+        return connections;
+    }
+
+    public void setConnections(HashMap<Integer, ArrayList<Integer>> connections) {
+        this.connections = connections;
+    }
+
+    public ArrayList<ArrayList<Integer>> getRouting() {
+        return routing;
+    }
+
+    public void setRouting(ArrayList<ArrayList<Integer>> routing) {
+        this.routing = routing;
+    }
 
 
     public Node(String[] args) {
@@ -44,14 +68,6 @@ public class Node {
         }
     }
 
-    public int getNodeId() {
-        return nodeId;
-    }
-
-    public HashMap<Integer, ArrayList<Integer>> getConnections() {
-        return connections;
-    }
-
     public void log(String string) {
         String stringToPrint = "nodeId: " + this.getNodeId() + ": " + string;
         System.out.println(stringToPrint);
@@ -62,9 +78,9 @@ public class Node {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("rat.rmq2.cloudamqp.com");
         factory.setPort(5672);
-        factory.setUsername("sgbdexna");
-        factory.setVirtualHost("sgbdexna");
-        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
+        factory.setUsername("wqnhzlhb");
+        factory.setVirtualHost("wqnhzlhb");
+        factory.setPassword("o9EdvwoKVGxNTfIEjVSqF9UUKPSrD8EJ");
         return factory.newConnection();
     }
 
@@ -109,11 +125,11 @@ public class Node {
 
         if (!me) {
             for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
-                    System.out.println(receivedNodeNeigbour.get(0));
-                    if (receivedNodeNeigbour.get(0) == node.getNodeId()){
-                        System.out.println("Founded sasiada");
-                        neigbour = true;
-                    }
+                System.out.println(receivedNodeNeigbour.get(0));
+                if (receivedNodeNeigbour.get(0) == node.getNodeId()) {
+                    System.out.println("Founded sasiada");
+                    neigbour = true;
+                }
             }
         }
 
@@ -124,16 +140,16 @@ public class Node {
                 for (ArrayList<Integer> nodeNeigbour : this.routing) {
                     System.out.println(receivedNodeNeigbour.get(0));
                     System.out.println(nodeNeigbour.get(0));
-                    if (receivedNodeNeigbour.get(0) != nodeNeigbour.get(0) && receivedNodeNeigbour.get(0) != node.getNodeId()){
+                    if (receivedNodeNeigbour.get(0) != nodeNeigbour.get(0) && receivedNodeNeigbour.get(0) != node.getNodeId()) {
                         System.out.println("Having already this connexion");
                         continue;
-                    }else {
+                    } else {
                         System.out.println("Founded potencial connetion" + receivedNodeNeigbour);
                         potencialConnection = true;
                     }
                 }
-                if (potencialConnection){
-                    System.out.println("Gonna add this" + receivedNodeNeigbour + "to my node "+ node.getNodeId());
+                if (potencialConnection) {
+                    System.out.println("Gonna add this" + receivedNodeNeigbour + "to my node " + node.getNodeId());
                 }
             }
         }
@@ -210,7 +226,7 @@ public class Node {
 
     public static void main(String[] args) throws Exception {
 
-        node = new Node(args);
+        Node node = new Node(args);
         networkObjects = new ArrayList<Node>();
         // NetworkNode nodeNetwork = new NetworkNode(node.getNodeId(), node.connections);
         networkObjects.add(node);
