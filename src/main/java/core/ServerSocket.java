@@ -1,9 +1,12 @@
 package core;
 
 import com.rabbitmq.client.*;
+import node.Node;
+import com.google.gson.Gson;
+
 
 public class ServerSocket {
-    static OverlayGraph overlay;
+    private OverlayGraph overlay;
     private static ServerSocket server;
     private final static String QUEUE_NAME = "join";
 
@@ -33,9 +36,10 @@ public class ServerSocket {
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String receivedMessage = new String(delivery.getBody(), "UTF-8");
-            String[] receivedArray = receivedMessage.split(",");
-            String nodeString = receivedArray[0];
-            int nodeInt = Integer.parseInt(nodeString);
+            Gson gson = new Gson();
+            Node receivedNode = gson.fromJson(receivedMessage, Node.class);
+
+            int nodeInt = receivedNode.getNodeId();
             System.out.println("Joining node: " + nodeInt);
             overlay.addNode(nodeInt);
             //overlay.printNodeList();
@@ -53,7 +57,7 @@ public class ServerSocket {
 
     }
 
-    public void fanout(String message) throws Exception{
+    public void fanout(String message) throws Exception {
 
         final String EXCHANGE_NAME = "nodesConnections";
 
@@ -69,7 +73,6 @@ public class ServerSocket {
     public static void main(String main[]) {
 
         server = new ServerSocket();
-        overlay = new OverlayGraph();
         try {
             server.join();
         } catch (Exception e) {

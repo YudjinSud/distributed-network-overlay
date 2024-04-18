@@ -4,20 +4,21 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.*;
+import com.google.gson.Gson;
 
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 // TODO: Classes to be exported as a Docker image in the future. This represents a node
 public class Node {
 
     private int nodeId;
     private static Node node;
-    private static ArrayList<NetworkNode> networkObjects;
-    public static HashMap<Integer, ArrayList<Integer>> connections;
+    private static ArrayList<Node> networkObjects;
+    public HashMap<Integer, ArrayList<Integer>> connections;
+    private ArrayList<ArrayList<Integer>> routing;
+
 
     public Node(String[] args) {
         if (args.length > 0) {
@@ -26,20 +27,33 @@ public class Node {
             this.nodeId = 0;
         }
 
-        connections = new HashMap<Integer, ArrayList<Integer>>();
-        connections.put(nodeId, new ArrayList<>());
+        this.connections = new HashMap<Integer, ArrayList<Integer>>();
+        this.connections.put(nodeId, new ArrayList<>());
         for (int i = 1; i < args.length; i++) {
-            connections.get(nodeId).add(Integer.parseInt(args[i]));
+            this.connections.get(nodeId).add(Integer.parseInt(args[i]));
         }
 
+        this.routing = new ArrayList<ArrayList<Integer>>();
+        List<Integer> connectedNodes = this.connections.get(nodeId);
+        for (Integer node : connectedNodes) {
+            ArrayList<Integer> routes = new ArrayList<>();
+            routes.add(node); // destination
+            routes.add(1); // distance
+            routes.add(nodeId); // where to go to reach destination
+            this.routing.add(routes);
+        }
     }
 
     public int getNodeId() {
         return nodeId;
     }
 
+    public HashMap<Integer, ArrayList<Integer>> getConnections() {
+        return connections;
+    }
+
     public void log(String string) {
-        String stringToPrint = "nodeId: " + node.getNodeId() + ": " + string;
+        String stringToPrint = "nodeId: " + this.getNodeId() + ": " + string;
         System.out.println(stringToPrint);
     }
 
@@ -54,16 +68,16 @@ public class Node {
         return factory.newConnection();
     }
 
-    public void joinClient(String[] args) throws Exception {
+    public void joinClient(String jsonString) throws Exception {
         final String QUEUE_NAME = "join";
 
         // We are converting a string of array to string, need to separate on the receiving side
-        String serializedMessage = String.join(",", args);
+        //String serializedMessage = String.join(",", args);
 
         try (Connection connection = establishConnection();
              Channel channel = connection.createChannel()) {
             channel.queueDeclare(QUEUE_NAME, false, false, false, null);
-            channel.basicPublish("", QUEUE_NAME, null, serializedMessage.getBytes(StandardCharsets.UTF_8));
+            channel.basicPublish("", QUEUE_NAME, null, jsonString.getBytes(StandardCharsets.UTF_8));
             node.log("[x] Request for new node '" + node.getNodeId() + "' sent");
         } catch (RuntimeException e) {
             System.out.println(" [.] " + e);
@@ -72,32 +86,77 @@ public class Node {
 
     public void handleMessage(String message) {
         boolean nodeExists = false;
+        boolean me = false;
+        boolean neigbour = false;
 
-        System.out.println("handleMessage(): " + message);
-        String[] receivedArray = message.split(",");
-        String nodeString = receivedArray[0];
-        int nodeInt = Integer.parseInt(nodeString);
+        Gson gson = new Gson();
+        Node receivedNode = gson.fromJson(message, Node.class);
 
 
-        for (NetworkNode obj : networkObjects) {
-            if (obj.getNodeId() == nodeInt) {
-                // If the node exists, set nodeExists to true and break the loop
+        if (receivedNode.getNodeId() == node.getNodeId()) {
+            me = true;
+        }
+
+        for (Node obj : networkObjects) {
+            if (obj.getNodeId() == receivedNode.getNodeId()) {
                 nodeExists = true;
-                node.log(obj.toString());
                 break;
             }
         }
-
-        if (!nodeExists) {
-            HashMap<Integer, ArrayList<Integer>> connectionsNeighbour = new HashMap<Integer, ArrayList<Integer>>();
-            connectionsNeighbour.put(nodeInt, new ArrayList<>());
-            for (int i = 1; i < receivedArray.length; i++) {
-                connectionsNeighbour.get(nodeInt).add(Integer.parseInt(receivedArray[i]));
-            }
-            NetworkNode newNode = new NetworkNode(nodeInt, connectionsNeighbour);
-            networkObjects.add(newNode);
-            System.out.println("handleMessage(): Got new routing from node" + newNode.toString());
+        if (!networkObjects.contains(receivedNode)) {
+            networkObjects.add(receivedNode);
         }
+
+        if (!me) {
+            for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
+                    System.out.println(receivedNodeNeigbour.get(0));
+                    if (receivedNodeNeigbour.get(0) == node.getNodeId()){
+                        System.out.println("Founded sasiada");
+                        neigbour = true;
+                    }
+            }
+        }
+
+        // To debug
+        if (neigbour) {
+            for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
+                boolean potencialConnection = false;
+                for (ArrayList<Integer> nodeNeigbour : this.routing) {
+                    System.out.println(receivedNodeNeigbour.get(0));
+                    System.out.println(nodeNeigbour.get(0));
+                    if (receivedNodeNeigbour.get(0) != nodeNeigbour.get(0) && receivedNodeNeigbour.get(0) != node.getNodeId()){
+                        System.out.println("Having already this connexion");
+                        continue;
+                    }else {
+                        System.out.println("Founded potencial connetion" + receivedNodeNeigbour);
+                        potencialConnection = true;
+                    }
+                }
+                if (potencialConnection){
+                    System.out.println("Gonna add this" + receivedNodeNeigbour + "to my node "+ node.getNodeId());
+                }
+            }
+        }
+
+
+        //check for the connections
+        if (me == false && neigbour == true) {
+            System.out.println("Checking for new routing ");
+
+        }
+
+
+//
+//        if (!nodeExists) {
+//            HashMap<Integer, ArrayList<Integer>> connectionsNeighbour = new HashMap<Integer, ArrayList<Integer>>();
+//            connectionsNeighbour.put(nodeInt, new ArrayList<>());
+//            for (int i = 1; i < receivedArray.length; i++) {
+//                connectionsNeighbour.get(nodeInt).add(Integer.parseInt(receivedArray[i]));
+//            }
+//            NetworkNode newNode = new NetworkNode(nodeInt, connectionsNeighbour);
+//            networkObjects.add(newNode);
+//            System.out.println("handleMessage(): Got new routing from node" + newNode.toString());
+//        }
 
 
     }
@@ -117,7 +176,7 @@ public class Node {
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String message = new String(delivery.getBody(), "UTF-8");
             node.log("[x] Received '" + message + "'");
-            node.handleMessage(message);
+            this.handleMessage(message);
         };
         channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {
         });
@@ -152,17 +211,47 @@ public class Node {
     public static void main(String[] args) throws Exception {
 
         node = new Node(args);
-        networkObjects = new ArrayList<NetworkNode>();
-        NetworkNode nodeNetwork = new NetworkNode(node.getNodeId(), connections);
-        networkObjects.add(nodeNetwork);
-
+        networkObjects = new ArrayList<Node>();
+        // NetworkNode nodeNetwork = new NetworkNode(node.getNodeId(), node.connections);
+        networkObjects.add(node);
+        Gson gson = new Gson();
+        String json = gson.toJson(node);
+        System.out.println(node);
 
         try {
             node.log("Born of node number " + node.getNodeId());
-            node.joinClient(args);
+            node.joinClient(json);
         } catch (NumberFormatException e) {
             System.out.println("Not an integer");
         }
         node.listen();
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Node ID: ").append(nodeId).append("\n");
+        sb.append("Connections: ").append(connections).append("\n");
+        sb.append("Routing: ").append(routing).append("\n");
+        return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Node other = (Node) obj;
+        return nodeId == other.nodeId && Objects.equals(connections, other.connections) && Objects.equals(routing, other.routing);
+    }
+
+    // hashCode method should be overridden along with equals method
+    @Override
+    public int hashCode() {
+        return Objects.hash(nodeId, connections, routing);
+    }
+
 }

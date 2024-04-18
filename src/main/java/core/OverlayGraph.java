@@ -39,7 +39,7 @@ public class OverlayGraph {
             }
             connections.add(currentNode);
             connections.add(nextNode);
-            adjList.put(currentNode, connections);
+            this.adjList.put(currentNode, connections);
         }
     }
 
@@ -56,6 +56,8 @@ public class OverlayGraph {
             if (nodeList.size() > 1) {
                 this.buildGraph();
             }
+        } else {
+            System.out.println("Node: '" + nodeNb + "' already in the scope, just propagating the message");
         }
     }
 
@@ -68,7 +70,12 @@ public class OverlayGraph {
     }
 
     public void printGraph() {
-        for (int node = 1; node <= adjList.size(); node++) {
+        if (nodeList.size() <= 1) {
+            return;
+        }
+        System.out.println("adjList:" + adjList);
+        for (int index = 0; index <= this.adjList.size() - 1; index++) {
+            int node = nodeList.get(index);
             List<Integer> adjNodes = this.getAdjNodes(node);
             System.out.print("Node " + node + " is connected to: ");
             for (int adjNode : adjNodes) {
@@ -76,6 +83,7 @@ public class OverlayGraph {
             }
             System.out.println();
         }
+
     }
 
 }
