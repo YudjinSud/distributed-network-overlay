@@ -12,7 +12,7 @@ public class NodeDeserializer implements JsonDeserializer<Node> {
         JsonObject jsonObject = json.getAsJsonObject();
 
         Node node = new Node(new String[0]);
-        node.setNodeId(jsonObject.get("").getAsInt());
+        node.setNodeId(jsonObject.get("nodeId").getAsInt());
 
         // Deserialize connections
         HashMap<Integer, ArrayList<Integer>> connections = new HashMap<>();

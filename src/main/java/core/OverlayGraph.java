@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Function;
 
 public class OverlayGraph {
     private HashMap<Integer, ArrayList<Integer>> adjList;
@@ -14,6 +15,14 @@ public class OverlayGraph {
 
     public int size() {
         return adjList.size();
+    }
+
+    public Function<Integer, Integer> onAddNodeCallback;
+
+    public void setOnAddNodeCallback(Function<Integer, Integer> onAddNodeCallback) {
+        this.onAddNodeCallback = onAddNodeCallback;
+
+        System.out.println("Callback set");
     }
 
     public OverlayGraph() {
@@ -53,6 +62,9 @@ public class OverlayGraph {
     public void addNode(int nodeNb) {
         if (!nodeList.contains(nodeNb)) {
             nodeList.add(nodeNb);
+
+//            this.onAddNodeCallback.apply(nodeNb);
+
             if (nodeList.size() > 1) {
                 this.buildGraph();
             }

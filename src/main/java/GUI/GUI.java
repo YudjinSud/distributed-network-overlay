@@ -48,13 +48,6 @@ public class GUI extends Application {
         }
 
         for (int i = 1; i <= this.graph.size(); i++) {
-
-
-            // for each node new java program
-            OverlayNode node = new OverlayNode(i);
-
-
-
             for (int j : this.graph.getAdjNodes(i)) {
                 if (i < j) {
                     g.insertEdge(String.valueOf(i), String.valueOf(j), String.valueOf(i) + "-" + String.valueOf(j));

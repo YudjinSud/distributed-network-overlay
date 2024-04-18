@@ -78,17 +78,14 @@ public class Node {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("rat.rmq2.cloudamqp.com");
         factory.setPort(5672);
-        factory.setUsername("sgbdexna");
-        factory.setVirtualHost("sgbdexna");
-        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
+        factory.setUsername("wqnhzlhb");
+        factory.setVirtualHost("wqnhzlhb");
+        factory.setPassword("o9EdvwoKVGxNTfIEjVSqF9UUKPSrD8EJ");
         return factory.newConnection();
     }
 
     public void joinClient(String jsonString) throws Exception {
         final String QUEUE_NAME = "join";
-
-        // We are converting a string of array to string, need to separate on the receiving side
-        //String serializedMessage = String.join(",", args);
 
         try (Connection connection = establishConnection();
              Channel channel = connection.createChannel()) {

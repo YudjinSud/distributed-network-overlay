@@ -18,6 +18,6 @@ public class AppController {
         this.overlayGraph = overlayGraph;
 //        this.graphView = graphView;
 
-        this.overlayGraph.setOnAddNodeCallback(this::onAddNode);
+//        this.overlayGraph.setOnAddNodeCallback(this::onAddNode);
     }
 }

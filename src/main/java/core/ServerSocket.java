@@ -17,9 +17,9 @@ public class ServerSocket {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("rat.rmq2.cloudamqp.com");
         factory.setPort(5672);
-        factory.setUsername("sgbdexna");
-        factory.setVirtualHost("sgbdexna");
-        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
+        factory.setUsername("wqnhzlhb");
+        factory.setVirtualHost("wqnhzlhb");
+        factory.setPassword("o9EdvwoKVGxNTfIEjVSqF9UUKPSrD8EJ");
         return factory.newConnection();
     }
 
