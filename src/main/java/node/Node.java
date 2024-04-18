@@ -69,7 +69,7 @@ public class Node {
     }
 
     public void log(String string) {
-        String stringToPrint = "nodeId: " + this.getNodeId() + ": " + string;
+        String stringToPrint = "nodeId: " + node.getNodeId() + ": " + string;
         System.out.println(stringToPrint);
     }
 
@@ -226,7 +226,7 @@ public class Node {
 
     public static void main(String[] args) throws Exception {
 
-        Node node = new Node(args);
+        node = new Node(args);
         networkObjects = new ArrayList<Node>();
         // NetworkNode nodeNetwork = new NetworkNode(node.getNodeId(), node.connections);
         networkObjects.add(node);
