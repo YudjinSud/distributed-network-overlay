@@ -1,5 +1,6 @@
 package node;
 
+import com.google.gson.GsonBuilder;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -101,6 +102,7 @@ public class Node {
         boolean nodeExists = false;
         boolean me = false;
         boolean neigbour = false;
+        int farNeigbourDistance = 0;
 
         Gson gson = new Gson();
         Node receivedNode = gson.fromJson(message, Node.class);
@@ -122,50 +124,95 @@ public class Node {
 
         if (!me) {
             for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
-                System.out.println(receivedNodeNeigbour.get(0));
-                if (receivedNodeNeigbour.get(0) == node.getNodeId()) {
-                    System.out.println("Founded sasiada");
+                if (receivedNodeNeigbour.get(0) == node.getNodeId() && receivedNodeNeigbour.get(1) == 1) {
                     neigbour = true;
+                } else if (receivedNodeNeigbour.get(0) == node.getNodeId()){
+                    farNeigbourDistance = receivedNodeNeigbour.get(1);
                 }
             }
         }
 
-        if (neigbour) {
+        if (neigbour || farNeigbourDistance > 1) {
             for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
                 boolean potencialConnection = false;
                 for (ArrayList<Integer> nodeNeigbour : this.routing) {
-                    System.out.println(receivedNodeNeigbour.get(0));
-                    System.out.println(nodeNeigbour.get(0));
-                    if (receivedNodeNeigbour.get(0) != nodeNeigbour.get(0) && receivedNodeNeigbour.get(0) != node.getNodeId()) {
-                        System.out.println("Having already this connexion");
-                        continue;
+                    int receivedNodeId = receivedNodeNeigbour.get(0);
+                    int nodeNeigbourId = nodeNeigbour.get(0);
+                    if (receivedNodeId == nodeNeigbourId || receivedNodeId == node.getNodeId()) {
+                        node.log("Having already this connection " + receivedNodeNeigbour);
+                        potencialConnection = false;
+                        break;
                     } else {
-                        System.out.println("Founded potencial connetion" + receivedNodeNeigbour);
+                        node.log("Found potential connection: " + receivedNodeNeigbour + " but still voting");
                         potencialConnection = true;
                     }
-                    if (potencialConnection) {
-                        System.out.println("Gonna add this" + receivedNodeNeigbour + "to my node " + node.getNodeId());
-                        ArrayList<Integer> routes = new ArrayList<>();
-                        routes.add(receivedNodeNeigbour.get(0)); // destination
-                        routes.add(receivedNodeNeigbour.get(1) + 1); // distance
-                        routes.add(receivedNode.getNodeId()); // where to go to reach destination
-                        System.out.println("New routes" + routes + "added to" + node.getNodeId());
-                        this.routing.add(routes);
-                        System.out.println(this.routing);
-
+                }
+                if (potencialConnection) {
+                    ArrayList<Integer> routes = new ArrayList<>();
+                    routes.add(receivedNodeNeigbour.get(0)); // destination
+                    if (farNeigbourDistance == 0) {
+                        routes.add(receivedNodeNeigbour.get(1) + 1);
+                    } else {
+                        routes.add(farNeigbourDistance + 1);
+                    }
+                    routes.add(receivedNode.getNodeId()); // where to go to reach destination
+                    node.log("New routes " + routes + " added to " + node.getNodeId());
+                    this.routing.add(routes);
+                    System.out.println(this.routing);
+                    String json = gson.toJson(node);
+                    try {
+                        Thread.sleep(1000);
+                        this.fanout(json);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
                     }
                 }
             }
-
-
-            //check for the connections
-            if (me == false && neigbour == true) {
-                System.out.println("Checking for new routing ");
-
-            }
-
-
         }
+        if (this.getNodeId() == 1 ){
+            this.sendMessage(1, 2, "suka");
+        }
+    }
+
+    public void sendMessage(int nodeSource, int nodeDestination, String message) {
+        boolean me = nodeSource == this.getNodeId();
+        if (nodeDestination == this.getNodeId()) {node.log("Message received: " + message); return;}
+        int nextNode = nodeDestination;
+        boolean foundRoute = false;
+
+
+        node.log("Sending message from: " + nodeSource + " to " + nodeDestination + " with message: " + message);
+        for (ArrayList<Integer> routes : this.routing) {
+            int destination = routes.get(0); // destination
+            int distance = routes.get(1); // distance
+            int whereToGo = routes.get(2); // where to go to reach destination
+            if (nodeDestination == destination && distance == 1){
+                node.log("Sending message directly to node: " + destination);
+                nextNode = destination;
+                foundRoute = true;
+                break;
+            } else if (distance > 1) {
+                node.log("Sending message through node: " + whereToGo);
+                nextNode = whereToGo;
+                foundRoute = true;
+                break;
+            }
+        }
+        if (!foundRoute) {
+            node.log("Too little routes, could not find connection");
+            return;
+            // fanout message to ask others to send their routes ?
+        }
+        MessageObject messageObj = new MessageObject(nodeSource,nodeDestination,nextNode,message);
+        Gson gson = new Gson();
+        String json = gson.toJson(messageObj);
+        String nodeIdAsString = String.valueOf(nextNode);
+        try {
+            this.sendToNode(json, nodeIdAsString);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public void listen() throws Exception {
@@ -179,7 +226,7 @@ public class Node {
         String queueName = channel.queueDeclare().getQueue();
         channel.queueBind(queueName, EXCHANGE_NAME, "");
 
-        node.log("[*] Waiting for messages. To exit press CTRL+C");
+        node.log("[*] Waiting for nodes messages. To exit press CTRL+C");
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String message = new String(delivery.getBody(), "UTF-8");
             node.log("[x] Received '" + message + "'");
@@ -190,6 +237,54 @@ public class Node {
 
     }
 
+    public void fanout(String message) throws Exception {
+
+        final String EXCHANGE_NAME = "nodesConnections";
+
+        try (Connection connection = establishConnection();
+             Channel channel = connection.createChannel()) {
+            channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+            channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes("UTF-8"));
+            System.out.println(" [x] Message propagated '" + message + "'");
+        }
+    }
+
+    public void sendToNode(String message, String QUEUE_NAME) throws Exception {
+
+        try (Connection connection = establishConnection();
+             Channel channel = connection.createChannel()) {
+            channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
+            node.log("[x] Message to node  '" +  QUEUE_NAME + "' sent");
+        } catch (RuntimeException e) {
+            System.out.println(" [.] " + e);
+        }
+    }
+
+    public void receiveOnNode() throws Exception {
+        String nodeIdAsString = String.valueOf(node.getNodeId());
+        String QUEUE_NAME = nodeIdAsString;
+
+        Connection connection = establishConnection();
+        Channel channel = connection.createChannel();
+
+        channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+        node.log(" [*] Waiting for direct messages. To exit press CTRL+C");
+
+        DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+            String receivedMessage = new String(delivery.getBody(), "UTF-8");
+            Gson gson = new Gson();
+            MessageObject messageObj = gson.fromJson(receivedMessage, MessageObject.class);
+            if (messageObj.getNodeDestination() == this.getNodeId()){
+                node.log("Message has been received: " + messageObj.getMessage());
+            } else {
+                this.sendMessage(this.getNodeId(), messageObj.getNodeDestination(), messageObj.getMessage());
+            }
+        };
+        channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
+        });
+
+    }
 
     public static void main(String[] args) throws Exception {
 
@@ -207,7 +302,9 @@ public class Node {
             System.out.println("Not an integer");
         }
         node.listen();
+        node.receiveOnNode();
     }
+
 
     @Override
     public String toString() {
@@ -229,10 +326,8 @@ public class Node {
         Node other = (Node) obj;
         return nodeId == other.nodeId && Objects.equals(connections, other.connections) && Objects.equals(routing, other.routing);
     }
-
     @Override
     public int hashCode() {
         return Objects.hash(nodeId, connections, routing);
     }
-
 }
