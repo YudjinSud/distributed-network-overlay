@@ -1,12 +1,13 @@
 package Conroller;
 
-import GUI.GUI;
+import GraphView.GraphView;
 import core.OverlayGraph;
+
+import java.util.ArrayList;
 
 public class AppController {
 
-    private OverlayGraph overlayGraph;
-    private GUI graphView;
+    private GraphView graphView;
 
     public Integer onAddNode(Integer nodeNb) {
         System.out.println(nodeNb);
@@ -14,10 +15,13 @@ public class AppController {
         return nodeNb;
     }
 
-    public AppController( OverlayGraph overlayGraph) {
-        this.overlayGraph = overlayGraph;
-//        this.graphView = graphView;
+    public AppController( OverlayGraph overlayGraph, GraphView graphView) {
+        this.graphView = graphView;
 
-//        this.overlayGraph.setOnAddNodeCallback(this::onAddNode);
+        overlayGraph.addPropertyChangeListener(evt -> {
+            ArrayList<Integer> nodeList = (ArrayList<Integer>) evt.getNewValue();
+
+            this.graphView.updateVirtualGraph(nodeList);
+        });
     }
 }

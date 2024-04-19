@@ -1,5 +1,7 @@
 package core;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -17,16 +19,9 @@ public class OverlayGraph {
         return adjList.size();
     }
 
-    public Function<Integer, Integer> onAddNodeCallback;
-
-    public void setOnAddNodeCallback(Function<Integer, Integer> onAddNodeCallback) {
-        this.onAddNodeCallback = onAddNodeCallback;
-
-        System.out.println("Callback set");
-    }
+    private PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
     public OverlayGraph() {
-
         this.adjList = new HashMap<Integer, ArrayList<Integer>>();
         this.nodeList = new ArrayList<Integer>();
     }
@@ -63,11 +58,13 @@ public class OverlayGraph {
         if (!nodeList.contains(nodeNb)) {
             nodeList.add(nodeNb);
 
-//            this.onAddNodeCallback.apply(nodeNb);
-
             if (nodeList.size() > 1) {
                 this.buildGraph();
             }
+
+            pcs.firePropertyChange("nodeList", null, nodeList);
+
+
         } else {
             System.out.println("Node: '" + nodeNb + "' already in the scope, just propagating the message");
         }
@@ -98,4 +95,11 @@ public class OverlayGraph {
 
     }
 
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        pcs.addPropertyChangeListener(listener);
+    }
+
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        pcs.removePropertyChangeListener(listener);
+    }
 }

@@ -8,9 +8,7 @@ import node.NodeDeserializer;
 
 
 public class ServerSocket {
-    public OverlayGraph overlay = new OverlayGraph();
-    private static ServerSocket server;
-    private final static String QUEUE_NAME = "join";
+    public OverlayGraph overlay;
 
     private static Connection establishConnection() throws Exception {
         // TODO Read credential from a file
@@ -33,7 +31,6 @@ public class ServerSocket {
         channel.queueDeclare(QUEUE_NAME, false, false, false, null);
         System.out.println(" [*] Waiting for nodes to join. To exit press CTRL+C");
 
-
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String receivedMessage = new String(delivery.getBody(), "UTF-8");
 
@@ -52,10 +49,11 @@ public class ServerSocket {
             overlay.addNode(nodeInt);
             //overlay.printNodeList();
             overlay.printGraph();
+
             System.out.println("Propagating node");
             try {
                 Thread.sleep(1000);
-                server.fanout(receivedMessage);
+                this.fanout(receivedMessage);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -77,16 +75,21 @@ public class ServerSocket {
         }
     }
 
+    public ServerSocket() {
 
-    public static void main(String main[]) {
+        this.overlay = new OverlayGraph();
 
-        server = new ServerSocket();
+        this.overlay.addPropertyChangeListener(evt -> {
+            Object obj = evt.getNewValue();
+            System.out.println(obj);
+        });
+
         try {
-            server.join();
+            join();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
+
 }
 

@@ -14,7 +14,6 @@ public class NodeDeserializer implements JsonDeserializer<Node> {
         Node node = new Node(new String[0]);
         node.setNodeId(jsonObject.get("nodeId").getAsInt());
 
-        // Deserialize connections
         HashMap<Integer, ArrayList<Integer>> connections = new HashMap<>();
         JsonObject connectionsObj = jsonObject.getAsJsonObject("connections");
         for (String key : connectionsObj.keySet()) {
@@ -23,7 +22,6 @@ public class NodeDeserializer implements JsonDeserializer<Node> {
         }
         node.setConnections(connections);
 
-        // Deserialize routing
         JsonArray routingArray = jsonObject.getAsJsonArray("routing");
         ArrayList<ArrayList<Integer>> routing = new ArrayList<>();
         for (int i = 0; i < routingArray.size(); i++) {
