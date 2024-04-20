@@ -91,9 +91,15 @@ public class Node {
         try (Connection connection = establishConnection();
              Channel channel = connection.createChannel()) {
             channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+            channel.confirmSelect(); // Enable publisher confirms
             channel.basicPublish("", QUEUE_NAME, null, jsonString.getBytes(StandardCharsets.UTF_8));
-            node.log("[x] Request for new node '" + node.getNodeId() + "' sent");
-        } catch (RuntimeException e) {
+            channel.waitForConfirmsOrDie(5_000);
+            if (channel.waitForConfirms()) {
+                node.log("[x] Request for new node '" + node.getNodeId() + "' sent and confirmed by RabbitMQ");
+            } else {
+                node.log("[!] Request for new node '" + node.getNodeId() + "' sent but not confirmed by RabbitMQ");
+            }
+        } catch (RuntimeException | InterruptedException e) {
             System.out.println(" [.] " + e);
         }
     }
@@ -126,7 +132,7 @@ public class Node {
             for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
                 if (receivedNodeNeigbour.get(0) == node.getNodeId() && receivedNodeNeigbour.get(1) == 1) {
                     neigbour = true;
-                } else if (receivedNodeNeigbour.get(0) == node.getNodeId()){
+                } else if (receivedNodeNeigbour.get(0) == node.getNodeId()) {
                     farNeigbourDistance = receivedNodeNeigbour.get(1);
                 }
             }
@@ -169,14 +175,17 @@ public class Node {
                 }
             }
         }
-        if (this.getNodeId() == 1 ){
+        if (this.getNodeId() == 1) {
             this.sendMessage(1, 2, "suka");
         }
     }
 
     public void sendMessage(int nodeSource, int nodeDestination, String message) {
         boolean me = nodeSource == this.getNodeId();
-        if (nodeDestination == this.getNodeId()) {node.log("Message received: " + message); return;}
+        if (nodeDestination == this.getNodeId()) {
+            node.log("Message received: " + message);
+            return;
+        }
         int nextNode = nodeDestination;
         boolean foundRoute = false;
 
@@ -186,7 +195,7 @@ public class Node {
             int destination = routes.get(0); // destination
             int distance = routes.get(1); // distance
             int whereToGo = routes.get(2); // where to go to reach destination
-            if (nodeDestination == destination && distance == 1){
+            if (nodeDestination == destination && distance == 1) {
                 node.log("Sending message directly to node: " + destination);
                 nextNode = destination;
                 foundRoute = true;
@@ -203,7 +212,7 @@ public class Node {
             return;
             // fanout message to ask others to send their routes ?
         }
-        MessageObject messageObj = new MessageObject(nodeSource,nodeDestination,nextNode,message);
+        MessageObject messageObj = new MessageObject(nodeSource, nodeDestination, nextNode, message);
         Gson gson = new Gson();
         String json = gson.toJson(messageObj);
         String nodeIdAsString = String.valueOf(nextNode);
@@ -255,7 +264,7 @@ public class Node {
              Channel channel = connection.createChannel()) {
             channel.queueDeclare(QUEUE_NAME, false, false, false, null);
             channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-            node.log("[x] Message to node  '" +  QUEUE_NAME + "' sent");
+            node.log("[x] Message to node  '" + QUEUE_NAME + "' sent");
         } catch (RuntimeException e) {
             System.out.println(" [.] " + e);
         }
@@ -269,13 +278,13 @@ public class Node {
         Channel channel = connection.createChannel();
 
         channel.queueDeclare(QUEUE_NAME, false, false, false, null);
-        node.log(" [*] Waiting for direct messages. To exit press CTRL+C");
+        node.log("[*] Waiting for direct messages. To exit press CTRL+C");
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String receivedMessage = new String(delivery.getBody(), "UTF-8");
             Gson gson = new Gson();
             MessageObject messageObj = gson.fromJson(receivedMessage, MessageObject.class);
-            if (messageObj.getNodeDestination() == this.getNodeId()){
+            if (messageObj.getNodeDestination() == this.getNodeId()) {
                 node.log("Message has been received: " + messageObj.getMessage());
             } else {
                 this.sendMessage(this.getNodeId(), messageObj.getNodeDestination(), messageObj.getMessage());
@@ -326,6 +335,7 @@ public class Node {
         Node other = (Node) obj;
         return nodeId == other.nodeId && Objects.equals(connections, other.connections) && Objects.equals(routing, other.routing);
     }
+
     @Override
     public int hashCode() {
         return Objects.hash(nodeId, connections, routing);

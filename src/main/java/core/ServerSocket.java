@@ -58,7 +58,7 @@ public class ServerSocket {
                 throw new RuntimeException(e);
             }
         };
-        channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
+        channel.basicConsume(QUEUE_NAME, false, deliverCallback, consumerTag -> {
         });
 
     }
