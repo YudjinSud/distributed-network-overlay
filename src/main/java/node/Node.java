@@ -105,7 +105,6 @@ public class Node {
     }
 
     public void handleMessage(String message) {
-        boolean nodeExists = false;
         boolean me = false;
         boolean neigbour = false;
         int farNeigbourDistance = 0;
@@ -116,13 +115,6 @@ public class Node {
 
         if (receivedNode.getNodeId() == node.getNodeId()) {
             me = true;
-        }
-
-        for (Node obj : networkObjects) {
-            if (obj.getNodeId() == receivedNode.getNodeId()) {
-                nodeExists = true;
-                break;
-            }
         }
         if (!networkObjects.contains(receivedNode)) {
             networkObjects.add(receivedNode);
@@ -175,9 +167,9 @@ public class Node {
                 }
             }
         }
-        if (this.getNodeId() == 1) {
-            this.sendMessage(1, 2, "suka");
-        }
+//        if (this.getNodeId() == 1) {
+//            this.sendMessage(1, 2, "Some message");
+//        }
     }
 
     public void sendMessage(int nodeSource, int nodeDestination, String message) {
@@ -208,9 +200,13 @@ public class Node {
             }
         }
         if (!foundRoute) {
-            node.log("Too little routes, could not find connection");
+            node.log("Too little routes, could not find connection. Try again");
+            try {
+                this.fanout("routing");
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             return;
-            // fanout message to ask others to send their routes ?
         }
         MessageObject messageObj = new MessageObject(nodeSource, nodeDestination, nextNode, message);
         Gson gson = new Gson();
@@ -239,7 +235,18 @@ public class Node {
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String message = new String(delivery.getBody(), "UTF-8");
             node.log("[x] Received '" + message + "'");
-            node.handleMessage(message);
+            if (message.equals("routing")) {
+                node.log("Receive routing request, propagating this node");
+                Gson gson = new Gson();
+                String json = gson.toJson(node);
+                try {
+                    this.fanout(json);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                node.handleMessage(message);
+            }
         };
         channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {
         });
@@ -254,7 +261,7 @@ public class Node {
              Channel channel = connection.createChannel()) {
             channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
             channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes("UTF-8"));
-            System.out.println(" [x] Message propagated '" + message + "'");
+            node.log("[x] Message propagated '" + message + "'");
         }
     }
 
