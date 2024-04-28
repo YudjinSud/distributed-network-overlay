@@ -4,16 +4,18 @@ import core.ServerSocket;
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Separator;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 public class App extends Application {
     TextArea logArea;
+
+    AppController appController;
 
     @Override
     public void start(Stage stage)  {
@@ -26,7 +28,7 @@ public class App extends Application {
 
             ServerSocket server = new ServerSocket();
 
-            AppController appController = new AppController(server.overlay, graphView);
+            appController = new AppController(server.overlay, graphView);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -48,15 +50,12 @@ public class App extends Application {
         logArea = new TextArea();
         logArea.setPrefHeight(100);
 
-        Button btnLeft = new Button("Msg left");
-        btnLeft.setOnAction(event -> logMessage("Message sent to the left graph"));
+        Button btn = new Button("Send message");
 
-        Button btnRight = new Button("Msg right");
-        btnRight.setOnAction(event -> logMessage("Message sent to the right graph"));
+        btn.setOnAction(event -> openDialog(stage));
 
-        HBox buttonBox = new HBox(10, btnLeft, btnRight);
+        HBox buttonBox = new HBox(10, btn);
         buttonBox.setAlignment(Pos.CENTER);
-
 
         VBox root = new VBox();
         root.getChildren().addAll(graphBox, buttonBox, logArea);
@@ -79,6 +78,49 @@ public class App extends Application {
     private void logMessage(String msg) {
         logArea.appendText(msg + "\n");
     }
+
+    private void openDialog(Stage owner) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.initModality(Modality.APPLICATION_MODAL);
+        alert.initOwner(owner);
+        alert.setTitle("Send Message");
+        alert.setHeaderText(null);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        TextField fromField = new TextField();
+        fromField.setPromptText("From Node");
+        TextField toField = new TextField();
+        toField.setPromptText("To Node");
+        TextField messageField = new TextField();
+        messageField.setPromptText("Message");
+
+        grid.add(new Label("From:"), 0, 0);
+        grid.add(fromField, 1, 0);
+        grid.add(new Label("To:"), 0, 1);
+        grid.add(toField, 1, 1);
+        grid.add(new Label("Message:"), 0, 2);
+        grid.add(messageField, 1, 2);
+
+        alert.getDialogPane().setContent(grid);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                handleSendMessage(fromField.getText(), toField.getText(), messageField.getText());
+            }
+        });
+    }
+
+    private void handleSendMessage(String from, String to, String message) {
+        System.out.println("Sending Message from " + from + " to " + to + ": " + message);
+        logMessage("Sending Message from " + from + " to " + to + ": " + message);
+
+        this.appController.sendMessage(Integer.parseInt(from), Integer.parseInt(to), message);
+
+    }
+
 
 
     public static void main(String[] args) {

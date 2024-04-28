@@ -7,6 +7,8 @@ import com.brunomnsilva.smartgraph.graphview.SmartGraphPanel;
 import com.brunomnsilva.smartgraph.graphview.SmartPlacementStrategy;
 
 import core.NetworkGraph;
+import node.ENodeColor;
+import node.NodeColor;
 
 import java.util.ArrayList;
 
@@ -35,6 +37,24 @@ public class GraphView {
         this.virtualGraph.init();
         this.physicalGraph.setAutomaticLayout(true);
         this.virtualGraph.setAutomaticLayout(true);
+    }
+
+    public void updateNodeColors(ArrayList<NodeColor> nodeColors) {
+        // update the colors of the nodes in the physical graph
+
+        System.out.println("Updating node colors");
+
+        graph.adjList.forEach((k, v) -> {
+            physicalGraph.getStylableVertex(String.valueOf(k)).setStyleClass("vertex");
+        });
+
+        nodeColors.forEach(nodeColor -> {
+            if (nodeColor.nodeColor.getValue() == ENodeColor.TRANSPORTING.getValue()) {
+                physicalGraph.getStylableVertex(String.valueOf(nodeColor.nodeId)).setStyleClass("vertexTransporting");
+            } else {
+                physicalGraph.getStylableVertex(String.valueOf(nodeColor.nodeId)).setStyleClass("vertexReceived");
+            }
+        });
     }
 
     public void updateVirtualGraph(ArrayList<Integer> nodeList) {

@@ -3,14 +3,12 @@ package node;
 public class MessageObject {
     private int nodeSource;
     private int nodeDestination;
-    private int nextNode;
     private String message;
 
     // Constructor
-    public MessageObject(int nodeSource, int nodeDestination, int nextNode, String message) {
+    public MessageObject(int nodeSource, int nodeDestination, String message) {
         this.nodeSource = nodeSource;
         this.nodeDestination = nodeDestination;
-        this.nextNode = nextNode;
         this.message = message;
     }
 
@@ -31,14 +29,6 @@ public class MessageObject {
         this.nodeDestination = nodeDestination;
     }
 
-    public int getNextNode() {
-        return nextNode;
-    }
-
-    public void setNextNode(int nextNode) {
-        this.nextNode = nextNode;
-    }
-
     public String getMessage() {
         return message;
     }
@@ -52,7 +42,6 @@ public class MessageObject {
         return "MessageObject{" +
                 "nodeSource=" + nodeSource +
                 ", nodeDestination=" + nodeDestination +
-                ", nextNode=" + nextNode +
                 ", message='" + message + '\'' +
                 '}';
     }

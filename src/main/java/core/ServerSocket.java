@@ -15,10 +15,27 @@ public class ServerSocket {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("rat.rmq2.cloudamqp.com");
         factory.setPort(5672);
-        factory.setUsername("wqnhzlhb");
-        factory.setVirtualHost("wqnhzlhb");
-        factory.setPassword("o9EdvwoKVGxNTfIEjVSqF9UUKPSrD8EJ");
+        factory.setUsername("sgbdexna");
+        factory.setVirtualHost("sgbdexna");
+        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
         return factory.newConnection();
+    }
+
+    public void joinQueueNodeColor() throws Exception {
+        String QUEUE_NAME = "nodeColor";
+
+        Connection connection = establishConnection();
+        Channel channel = connection.createChannel();
+
+        channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+
+        DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+            String receivedMessage = new String(delivery.getBody(), "UTF-8");
+
+            overlay.processNodeColor(receivedMessage);
+        };
+        channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
+        });
     }
 
 
@@ -46,7 +63,7 @@ public class ServerSocket {
 
             int nodeInt = receivedNode.getNodeId();
             System.out.println("Joining node: " + nodeInt);
-            overlay.addNode(nodeInt);
+            overlay.addNode(nodeInt, receivedNode);
             //overlay.printNodeList();
             overlay.printGraph();
 
@@ -58,7 +75,7 @@ public class ServerSocket {
                 throw new RuntimeException(e);
             }
         };
-        channel.basicConsume(QUEUE_NAME, false, deliverCallback, consumerTag -> {
+        channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
         });
 
     }
@@ -86,6 +103,7 @@ public class ServerSocket {
 
         try {
             join();
+            joinQueueNodeColor();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

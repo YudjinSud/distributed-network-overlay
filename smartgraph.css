@@ -56,9 +56,16 @@ This should help you understand which styles you can apply.
 
 /* Custom vertex. You should revert any unwanted styling in the default element,
    style, since custom styles will be appended to the default style */
-.myVertex {
+.vertexTransporting {
     -fx-stroke-width: 4;
     -fx-stroke: green;
     -fx-stroke-type: inside; /* you should keep this if using arrows */
-    -fx-fill: yellowgreen;
+    -fx-fill: green;
+}
+
+.vertexReceived {
+    -fx-stroke-width: 4;
+    -fx-stroke: black;
+    -fx-stroke-type: inside; /* you should keep this if using arrows */
+    -fx-fill: red;
 }

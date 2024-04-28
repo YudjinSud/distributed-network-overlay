@@ -1,5 +1,9 @@
 package core;
 
+import node.ENodeColor;
+import node.Node;
+import node.NodeColor;
+
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.BufferedReader;
@@ -14,6 +18,10 @@ public class OverlayGraph {
     private HashMap<Integer, ArrayList<Integer>> adjList;
 
     private ArrayList<Integer> nodeList;
+
+    public ArrayList<NodeColor> nodeColors = new ArrayList<>();
+
+    public ArrayList<Node> networkObjects = new ArrayList<>();
 
     public int size() {
         return adjList.size();
@@ -54,9 +62,11 @@ public class OverlayGraph {
         System.out.println();
     }
 
-    public void addNode(int nodeNb) {
+    public void addNode(int nodeNb, Node node) {
         if (!nodeList.contains(nodeNb)) {
             nodeList.add(nodeNb);
+
+            this.networkObjects.add(node);
 
             if (nodeList.size() > 1) {
                 this.buildGraph();
@@ -69,6 +79,36 @@ public class OverlayGraph {
             System.out.println("Node: '" + nodeNb + "' already in the scope, just propagating the message");
         }
     }
+
+    public void processNodeColor(String input) {
+        String[] parts = input.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid input format");
+        }
+
+        int id = Integer.parseInt(parts[0]);
+        ENodeColor color = ENodeColor.fromString(parts[1]);
+
+        NodeColor nodeColor = new NodeColor(id, color);
+        nodeColors.add(nodeColor);
+
+        pcs.firePropertyChange("nodeColors", null, nodeColors);
+
+        if (color.getValue() == ENodeColor.RECEIVED.getValue()) {
+            nodeColors.clear();
+
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            pcs.firePropertyChange("nodeColors", null, nodeColors);
+
+        }
+    }
+
 
     public HashMap<Integer, ArrayList<Integer>> getAdjList() {
         return adjList;

@@ -9,7 +9,7 @@ import java.util.List;
 
 public class NetworkGraph {
 
-    private HashMap<Integer, ArrayList<Integer>> adjList;
+    public HashMap<Integer, ArrayList<Integer>> adjList;
 
     public int size() {
         return adjList.size();

@@ -8,13 +8,13 @@ import com.rabbitmq.client.*;
 import com.google.gson.Gson;
 
 
+import java.beans.PropertyChangeListener;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-// TODO: Classes to be exported as a Docker image in the future. This represents a node
 public class Node {
     private static Node node;
-    private static ArrayList<Node> networkObjects;
+    public static ArrayList<Node> networkObjects;
 
     private int nodeId;
     public HashMap<Integer, ArrayList<Integer>> connections;
@@ -44,6 +44,11 @@ public class Node {
         this.routing = routing;
     }
 
+    private ENodeColor color;
+
+    public String getNodeColorMessage() {
+        return this.getNodeId() + ":" + this.color.toString();
+    }
 
     public Node(String[] args) {
         if (args.length > 0) {
@@ -70,7 +75,7 @@ public class Node {
     }
 
     public void log(String string) {
-        String stringToPrint = "nodeId: " + node.getNodeId() + ": " + string;
+        String stringToPrint = "nodeId: " + this.getNodeId() + ": " + string;
         System.out.println(stringToPrint);
     }
 
@@ -79,9 +84,9 @@ public class Node {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("rat.rmq2.cloudamqp.com");
         factory.setPort(5672);
-        factory.setUsername("wqnhzlhb");
-        factory.setVirtualHost("wqnhzlhb");
-        factory.setPassword("o9EdvwoKVGxNTfIEjVSqF9UUKPSrD8EJ");
+        factory.setUsername("sgbdexna");
+        factory.setVirtualHost("sgbdexna");
+        factory.setPassword("HLRzRamxhUobw5vEnZRXAHNNluy6aNwQ");
         return factory.newConnection();
     }
 
@@ -95,9 +100,9 @@ public class Node {
             channel.basicPublish("", QUEUE_NAME, null, jsonString.getBytes(StandardCharsets.UTF_8));
             channel.waitForConfirmsOrDie(5_000);
             if (channel.waitForConfirms()) {
-                node.log("[x] Request for new node '" + node.getNodeId() + "' sent and confirmed by RabbitMQ");
+                this.log("[x] Request for new node '" + node.getNodeId() + "' sent and confirmed by RabbitMQ");
             } else {
-                node.log("[!] Request for new node '" + node.getNodeId() + "' sent but not confirmed by RabbitMQ");
+                this.log("[!] Request for new node '" + node.getNodeId() + "' sent but not confirmed by RabbitMQ");
             }
         } catch (RuntimeException | InterruptedException e) {
             System.out.println(" [.] " + e);
@@ -113,7 +118,7 @@ public class Node {
         Node receivedNode = gson.fromJson(message, Node.class);
 
 
-        if (receivedNode.getNodeId() == node.getNodeId()) {
+        if (receivedNode.getNodeId() == this.getNodeId()) {
             me = true;
         }
         if (!networkObjects.contains(receivedNode)) {
@@ -122,9 +127,9 @@ public class Node {
 
         if (!me) {
             for (ArrayList<Integer> receivedNodeNeigbour : receivedNode.routing) {
-                if (receivedNodeNeigbour.get(0) == node.getNodeId() && receivedNodeNeigbour.get(1) == 1) {
+                if (receivedNodeNeigbour.get(0) == this.getNodeId() && receivedNodeNeigbour.get(1) == 1) {
                     neigbour = true;
-                } else if (receivedNodeNeigbour.get(0) == node.getNodeId()) {
+                } else if (receivedNodeNeigbour.get(0) == this.getNodeId()) {
                     farNeigbourDistance = receivedNodeNeigbour.get(1);
                 }
             }
@@ -136,12 +141,12 @@ public class Node {
                 for (ArrayList<Integer> nodeNeigbour : this.routing) {
                     int receivedNodeId = receivedNodeNeigbour.get(0);
                     int nodeNeigbourId = nodeNeigbour.get(0);
-                    if (receivedNodeId == nodeNeigbourId || receivedNodeId == node.getNodeId()) {
-                        node.log("Having already this connection " + receivedNodeNeigbour);
+                    if (receivedNodeId == nodeNeigbourId || receivedNodeId == this.getNodeId()) {
+                        this.log("Having already this connection " + receivedNodeNeigbour);
                         potencialConnection = false;
                         break;
                     } else {
-                        node.log("Found potential connection: " + receivedNodeNeigbour + " but still voting");
+                        this.log("Found potential connection: " + receivedNodeNeigbour + " but still voting");
                         potencialConnection = true;
                     }
                 }
@@ -154,7 +159,7 @@ public class Node {
                         routes.add(farNeigbourDistance + 1);
                     }
                     routes.add(receivedNode.getNodeId()); // where to go to reach destination
-                    node.log("New routes " + routes + " added to " + node.getNodeId());
+                    this.log("New routes " + routes + " added to " + this.getNodeId());
                     this.routing.add(routes);
                     System.out.println(this.routing);
                     String json = gson.toJson(node);
@@ -175,32 +180,35 @@ public class Node {
     public void sendMessage(int nodeSource, int nodeDestination, String message) {
         boolean me = nodeSource == this.getNodeId();
         if (nodeDestination == this.getNodeId()) {
-            node.log("Message received: " + message);
+            this.log("Message received: " + message);
             return;
         }
         int nextNode = nodeDestination;
         boolean foundRoute = false;
 
 
-        node.log("Sending message from: " + nodeSource + " to " + nodeDestination + " with message: " + message);
+        this.log("Sending message from: " + nodeSource + " to " + nodeDestination + " with message: " + message);
         for (ArrayList<Integer> routes : this.routing) {
-            int destination = routes.get(0); // destination
-            int distance = routes.get(1); // distance
-            int whereToGo = routes.get(2); // where to go to reach destination
+            int destination = runtimeMagicGetInteger(routes.get(0));
+
+            int distance = runtimeMagicGetInteger(routes.get(1));
+
+            int whereToGo = runtimeMagicGetInteger(routes.get(2));
+
             if (nodeDestination == destination && distance == 1) {
-                node.log("Sending message directly to node: " + destination);
+                this.log("Sending message directly to node: " + destination);
                 nextNode = destination;
                 foundRoute = true;
                 break;
             } else if (distance > 1) {
-                node.log("Sending message through node: " + whereToGo);
+                this.log("Sending message through node: " + whereToGo);
                 nextNode = whereToGo;
                 foundRoute = true;
                 break;
             }
         }
         if (!foundRoute) {
-            node.log("Too little routes, could not find connection. Try again");
+            this.log("Too little routes, could not find connection. Try again");
             try {
                 this.fanout("routing");
             } catch (Exception e) {
@@ -208,7 +216,7 @@ public class Node {
             }
             return;
         }
-        MessageObject messageObj = new MessageObject(nodeSource, nodeDestination, nextNode, message);
+        MessageObject messageObj = new MessageObject(nodeSource, nodeDestination, message);
         Gson gson = new Gson();
         String json = gson.toJson(messageObj);
         String nodeIdAsString = String.valueOf(nextNode);
@@ -218,6 +226,22 @@ public class Node {
             throw new RuntimeException(e);
         }
 
+    }
+
+    // I literally have any idea why the integers becomes double in runtime.
+    // This is kind of magic.
+    public int runtimeMagicGetInteger(Object item) {
+        Double magicDouble;
+
+        if (item instanceof Double) {
+            magicDouble = (Double) item;
+        } else if (item instanceof Integer) {
+            magicDouble = ((Integer) item).doubleValue();
+        } else {
+            throw new RuntimeException("Unknown type");
+        }
+
+        return magicDouble.intValue();
     }
 
     public void listen() throws Exception {
@@ -231,12 +255,12 @@ public class Node {
         String queueName = channel.queueDeclare().getQueue();
         channel.queueBind(queueName, EXCHANGE_NAME, "");
 
-        node.log("[*] Waiting for nodes messages. To exit press CTRL+C");
+        this.log("[*] Waiting for nodes messages. To exit press CTRL+C");
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String message = new String(delivery.getBody(), "UTF-8");
-            node.log("[x] Received '" + message + "'");
+            this.log("[x] Received '" + message + "'");
             if (message.equals("routing")) {
-                node.log("Receive routing request, propagating this node");
+                this.log("Receive routing request, propagating this node");
                 Gson gson = new Gson();
                 String json = gson.toJson(node);
                 try {
@@ -261,11 +285,11 @@ public class Node {
              Channel channel = connection.createChannel()) {
             channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
             channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes("UTF-8"));
-            node.log("[x] Message propagated '" + message + "'");
+            this.log("[x] Message propagated '" + message + "'");
         }
     }
 
-    public void sendToNode(String message, String QUEUE_NAME) throws Exception {
+    public static void sendToNode(String message, String QUEUE_NAME) throws Exception {
 
         try (Connection connection = establishConnection();
              Channel channel = connection.createChannel()) {
@@ -277,25 +301,52 @@ public class Node {
         }
     }
 
+    public void sendNodeColor() {
+        String QUEUE_NAME = "nodeColor";
+
+        try {
+            try (Connection connection = establishConnection();
+                 Channel channel = connection.createChannel()) {
+                channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+                channel.basicPublish("", QUEUE_NAME, null, this.getNodeColorMessage().getBytes(StandardCharsets.UTF_8));
+                node.log("[x] Node color to node  '" + QUEUE_NAME + "' sent");
+            } catch (RuntimeException e) {
+                System.out.println(" [.] " + e);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void receiveOnNode() throws Exception {
-        String nodeIdAsString = String.valueOf(node.getNodeId());
+        String nodeIdAsString = String.valueOf(this.getNodeId());
         String QUEUE_NAME = nodeIdAsString;
 
         Connection connection = establishConnection();
         Channel channel = connection.createChannel();
 
         channel.queueDeclare(QUEUE_NAME, false, false, false, null);
-        node.log("[*] Waiting for direct messages. To exit press CTRL+C");
+        this.log("[*] Waiting for direct messages. To exit press CTRL+C");
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String receivedMessage = new String(delivery.getBody(), "UTF-8");
             Gson gson = new Gson();
             MessageObject messageObj = gson.fromJson(receivedMessage, MessageObject.class);
             if (messageObj.getNodeDestination() == this.getNodeId()) {
-                node.log("Message has been received: " + messageObj.getMessage());
+                this.log("Message has been received: " + messageObj.getMessage());
+                this.color = ENodeColor.RECEIVED;
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             } else {
                 this.sendMessage(this.getNodeId(), messageObj.getNodeDestination(), messageObj.getMessage());
+                this.color = ENodeColor.TRANSPORTING;
             }
+
+            this.sendNodeColor();
+
         };
         channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
         });
