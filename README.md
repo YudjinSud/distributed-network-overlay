@@ -1,5 +1,8 @@
-## Install dependencies
-mvn clean install
+![](demo.gif)
+
+
+## Deploy and run
+./deploy.sh
 
 
 ## Nodes
